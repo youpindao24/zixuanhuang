@@ -1,0 +1,568 @@
+---
+title: "ST542 Final Project"
+toc: true
+toc-location: body
+pagebreak-after-toc: true
+toc-title: "Table Of Contents"
+author: "Liam Flaherty Zixuan Huang"
+format: pdf
+geometry: 
+  - left=0.5in
+  - right=0.5in
+  - top=0.5in
+  - bottom=0.5in
+editor: visual
+---
+
+\newpage
+
+# 1. Handling Your Data
+
+## 1a. Data Input
+
+Given output from your online survey, you should be able to upload the results to an Excel file. The format of the data should follow the sample sheet we sent you, which just gives you a toy example to understand what is going on:
+
+1.  Column A: Unique student ID (e.g. S1021A)
+
+2.  Column B: Student course (e.g. 102)
+
+3.  Column C: Student Section (e.g. 1)
+
+4.  Column D: Question Number (e.g. Q25)
+
+5.  Column E: Student Response (e.g. 1 for "Strongly Disagree", 5 for "Strongly Agree")
+
+6.  Column F: Professor (e.g. Professor Darhower)
+
+7.  Column G: Experience (on a 1-3 scale)
+
+8.  Column H: Sex (M, F)
+
+9.  Column I: Age (e.g. 19)
+
+If putting results into this format is taking a long time, you are probably making things too difficult! Send the output to us and we can try to help. Excel is extremely powerful but frustrating if you are not familiar with all the functions.
+
+Just to note, the sample data I provided is 72 questions (from the most recent iteration of questions you sent us), answered by 10 students in each of 4 different classes (2 different courses that each have 2 sections). After titling columns A-I as "student", course", "section", "question", "response", "prof", "experience", "sex", and "age", I generated the synthetic data with the below, starting in cell A2 and dragging down to row 2881 ($72 \times 10 \times 4$\$72 \\times 10 \\times 4\$ plus the column names):
+
+For the `student` column, I used: `=IF(OR(A1="student", C2<>C1), "S"&B2&C2&"A", IF(D2<>1, A1, "S"&B2&C2&CHAR(CODE(RIGHT(A1,1))+1)))`{.verbatim}
+
+For the `course` column, I used: `=IF(B1="course",102, IF(ROW(A2)=72*20+2, 200, B1))`{.verbatim}
+
+For the `section` column, I used: `=IF(C1="section",1, IF(ROW(A2)=72*10+2, 2, IF(ROW(A2)=72*20+2, 1, IF(ROW(A2)=72*30+2, 2, C1))))`{.verbatim}
+
+For the `question` column, I used: `=MOD(SEQUENCE(72*40)-1,72)+1`{.verbatim}
+
+For the `response` column, I used: `=RANDBETWEEN(1,5)`{.verbatim}
+
+For the `prof` column, I used: `=IF(OR(AND(B2=102, C2=1), AND(B2=200, C2=2)), "Professor Darhower",IF(B2=102, "Professor Smith", "Professor Doe"))`{.verbatim}
+
+For the `experience` column, I used: `=IF($A2=$A1, G1, RANDBETWEEN(1,3))`{.verbatim}
+
+For the `sex` column, I used: `=IF($A2=$A1, H1, IF(RAND()<0.5, "F", "M"))`{.verbatim}
+
+For the `age` column, I used: `=IF($A2=$A1, I1, RANDBETWEEN(18,22))`{.verbatim}
+
+## 1b. Import Data To R
+
+After putting your results in the excel sheet, save it as a .csv file. Alter the following two lines to match your file path and sheet name.
+
+```{r}
+path="C:/Users/LiamFlaherty/Documents/Academics/ST542 Statistical Practice/Project/"  #change to your path#
+endpoint="Questionaire Template.csv"                                                  #change to your name#
+```
+
+If you entered things correctly, the following will give you the results in R.
+
+```{r, output=FALSE}
+#install.packages("tidyverse")#          #remove the hashtags the first time you run the code#
+library(tidyverse)                       
+
+ipa=read.csv(paste0(path, endpoint)) |>
+  mutate(response_char=factor(
+    recode(response,
+    '1'="strongly disagree",
+    '2'="disagree",
+    '3'="neutral",
+    '4'="agree",
+    '5'="strongly agree"),
+    levels = c("strongly disagree", 
+              "disagree",
+               "neutral",
+               "agree",
+               "strongly agree")))
+```
+
+## 1c. Clean Data
+
+It is quite difficult to anticipate the possible data irregularities that might pop up (if someone could think up a way to be fully comprehensive, there would be some sort of program that would render this step unnecessary!). Instead, we can only give general advice. The below gives you a glimpse of the data to see if things look as expected. For example, does the response have a minimum of 1, and maximum of 5? Are the `question`, `section`, and `course` stored as `int`? If something looks off, I would suggest fixing it in Excel and redoing the above steps. If there is something that you think looks off, but you aren't sure how to fix it, please contact us and we can try to help.
+
+```{r}
+str(ipa)
+summary(ipa)
+```
+
+## 1d. Data Dictionary
+
+You gave us a list of 72 questions grouped into five sections. If you end up adding/subtracting questions from a section, you can just change the values for the `q`s. For example, if you added 3 questions to the interpersonal section of the questions, you would would change it to `m4=21`.
+
+```{r}
+m1=15
+m2=5
+m3=16
+m4=18
+m5=18
+
+ipa=ipa |>
+  mutate(
+    question_type = case_when(
+      between(question, 1, m1) ~ "perception",
+      between(question, m1+1, m1+m2) ~ "general",
+      between(question, m1+m2+1, m1+m2+m3) ~ "interpret",
+      between(question, m1+m2+m3+1, m1+m2+m3+m4) ~ "interpersonal",
+      between(question, m1+m2+m3+m4+1, m1+m2+m3+m4+m5) ~ "presentational"
+    )
+  )
+
+```
+
+The questions are below. If you end up needing to add/subtract some of them, don't individually change the numbering! You can easily do everything in Excel by copying and pasting the below into a document, and then dragging down `="myq["&ROW(A1)&"]="""&CELL&""""`. Where `CELL` is changed to the cell your data is in (e.g. A1).
+
+```{r}
+myq=vector()
+myq[1]="I enjoyed the IPA format"
+myq[2]="The IPAs provided me an opportunity for real-life language use"
+myq[3]="Participating in the IPAs was stressful for me"
+myq[4]="Participating in the IPAs helped me to improve my writing ability in Spanish"
+myq[5]="Participating in the IPAs helped me to improve my comprehension of Spanish"
+myq[6]="Participating in the IPAs helped me to improve my speaking ability in Spanish"
+myq[7]="Participating in the IPAs helped me to improve my reading ability in Spanish"
+myq[8]="The IPA feedback that I received was specific and individualized"
+myq[9]="The IPA feedback that I received was supportive and non-judgemental"
+myq[10]="IPAs should be an integral part of a first-year Spanish course"
+myq[11]="The IPA instructions and expectations were clear"
+myq[12]="Classroom activities helped me prepare for the IPAs"
+myq[13]="I understood what the IPAs were meant to evaluate"
+myq[14]="The IPAs adequately assessed my overall language ability"
+myq[15]="The IPA-based class format motivates me to continue studying Spanish"
+myq[16]="I am calm"
+myq[17]="I feel nervous"
+myq[18]="I tire quickly"
+myq[19]="I worry too much over something that doesn’t really matter"
+myq[20]="I feel pleasant"
+myq[21]="I felt calm during the interpretive IPA"
+myq[22]="The amount of time allocated was sufficient"
+myq[23]="I  felt anxious when I couldn't predict the text type to study before the interpretive IPA"
+myq[24]="I couldn't remember supporting details very well when I was nervous"
+myq[25]="I couldn't recall the main ideas in the text when I was anxious"
+myq[26]="I got anxious when  I did not  understand unfamiliar  words  in the text"
+myq[27]="The amount of information I had to process made me worried"
+myq[28]="I felt  anxious when I couldn't predict the vocabulary to study before the interpretive IPA"
+myq[29]="I felt pleasant during the Interpretive task"
+myq[30]="I was self conscious when discussing a text in class"
+myq[31]="The difficulty of the text increased my anxiety level"
+myq[32]="My anxiety could have been minimal if I understood the instructions"
+myq[33]="I feared I would not understand the interpretive text"
+myq[34]="I enjoyed the topics of the texts"
+myq[35]="The texts I read in class prepared me for the interpretive IPA"
+myq[36]="I clearly understood the rubric and expectations for the interpretive task"
+myq[37]="I was comfortable speaking with my classmate during the interpersonal task"
+myq[38]="I was anxious when I had to speak spontaneously without relying on prepared materials"
+myq[39]="I was confident when speaking"
+myq[40]="I  was worried that I would not be able to respond quickly in Spanish during the conversation"
+myq[41]="I was uncomfortable when a conversation partner was assigned to me"
+myq[42]="When I got anxious, I had to rely on prepared materials"
+myq[43]="I worried about making grammatical mistakes while speaking"
+myq[44]="I got anxious when my partner was unable to engage in a natural conversation with me"
+myq[45]="When I became anxious, I couldn't speak with my partner"
+myq[46]="I forgot what I had to say because I was nervous"
+myq[47]="I was relaxed while talking to the partner I chose"
+myq[48]="I felt self-conscious when speaking"
+myq[49]="When I became anxious, I couldn't engage in a true conversational exchange with my partner"
+myq[50]="I clearly understood the prompt for the interpersonal task so I wasn't worried"
+myq[51]="I became nervous when I couldn't recall grammar while speaking"
+myq[52]="I was relaxed when talking"
+myq[53]="I remembered vocabulary for the task when I was nervous"
+myq[54]="I had more speaking opportunities in class prior to the IPA so I wasn't anxious"
+myq[55]="I was at ease"
+myq[56]="I got nervous when I was unable to present my ideas clearly"
+myq[57]="I was comfortable discussing unfamiliar topics"
+myq[58]="I felt anxious because I had to produce a creative discourse"
+myq[59]="I used English instead of Spanish"
+myq[60]="I produced a coherent discourse"
+myq[61]="I was nervous because the time allocated for the presentational task was insufficient"
+myq[62]="I got anxious when I did not have the appropriate vocabulary for the task"
+myq[63]="I produced a fluent discourse in the presentational task"
+myq[64]="I was relaxed when called to answer questions in class"
+myq[65]="I got tense when my instructor corrected me in class"
+myq[66]="I clearly understood the prompt for the presentational task"
+myq[67]="I was worried because I did not know the appropriate tense to use"
+myq[68]="I felt calm about how my instructor would grade my video presentation"
+myq[69]="I got tired quickly during the presentational task"
+myq[70]="I clearly understood the rubric for the presentational task"
+myq[71]="I worried about how the instructor would grade my writing"
+myq[72]="The instructor supported me in class prior to the presentational IPA"
+
+```
+
+\newpage
+
+# 2. Exploratory Data Analysis
+
+Let's look at a few distributions before we begin statistical tests.
+
+## 2a. EDA By Question
+
+The distributions of primary interest are probably the questions themselves. For a single question aggregated over all respondents, you can do something like:
+
+```{r}
+q=15                                                  #change to whatever question you want#
+df=ipa[which(ipa$question==q),"response_char"]
+barplot(table(df), 
+        main=paste0("All Respondents, n=", length(unique(ipa$student)), ":","\n", myq[q]),
+        xlab="Response",
+        ylab="Frequency",
+        col="red",
+        ylim=c(0, max(table(df))))
+
+```
+
+You can also loop through all the questions with something like the below. To prevent extraneous output, we just show the first three. But if you are working in R and want to flip through all of them to get a quick visual, you can replace `3` (in `for(i in 1:3)`) with `length(q)` (so `for(i in 1:length(q))`). Further note that titles may not fully display if you just run the code in the script due to lack of space. If you copy the code to the console (in RStudio, the default location for the script--the thing you're reading right now-- is the upper left quadrant, while the console is the bottom left quadrant), the full title should show up in the plots section.
+
+```{r}
+q=unique(ipa$question)
+
+for (i in 1:3) {                           #replace '3' with 'length(q)' if you want to see them all#
+  df=ipa[which(ipa$question==i),"response_char"]
+  
+  barplot(table(df), 
+          main=paste0("All Respondents, n=", length(unique(ipa$student)), ":","\n", myq[i]),
+          xlab="Response",
+          ylab="Frequency",
+          col="red",
+          ylim=c(0, max(table(df))))
+}
+```
+
+## 2b. EDA By student
+
+Maybe you are interested in how a single student answers their questions. You can do so with the below:
+
+```{r}
+studentcount=length(unique(ipa$student))
+
+for (i in 1:3) {               #replace `3` with`studentcount' if want to show all#
+ df=ipa[which(ipa$student==unique(ipa$student)[i]),"response_char"]
+ barplot(table(df), 
+        main=paste0("Barplot Of Student ", unique(ipa$student)[i], " Responses"),
+        xlab="Response",
+        ylab="Frequency",
+        col="blue",
+        ylim=c(0, max(table(df)))) 
+}
+```
+
+If you'd like to compare all students simultaneously, we can run the below. Like before, to prevent extraneous output, we just show the first three. If you are in R and want to scroll through all them just to get a visual, you can change `3` (in `for(i in 1:3)`) to `length(q)` (so `for(i in 1:length(q))`).
+
+```{r}
+mystudent="S1022A"    #change number to whatever you want#
+df=ipa[which(ipa$student==mystudent),"response_char"]
+
+barplot(table(df), 
+        main=paste0("Barplot Of Student ", mystudent, " Responses"),
+        xlab="Response",
+        ylab="Frequency",
+        col="blue",
+        ylim=c(0, max(table(df))))
+```
+
+## 2c. EDA By Professor
+
+We have a few more things to test-- professor, section, class type
+
+Another criteria of interest may be the question type. For variety,
+
+```{r}
+myprof=unique(ipa$prof)
+
+for (i in 1:length(myprof)) {               
+ df=ipa[which(ipa$prof==unique(ipa$prof)[i]),"response_char"]
+ barplot(table(df), 
+        main=paste0("Barplot Of Professor ", unique(ipa$prof)[i], " Responses"),
+        xlab="Response",
+        ylab="Frequency",
+        col="forestgreen",
+        ylim=c(0, max(table(df)))) 
+}
+
+```
+
+## 2d. EDA By Question Type
+
+We can also examine by question type.
+
+```{r}
+myqtype=unique(ipa$question_type)
+
+for (i in 1:length(myqtype)) {               
+ df=ipa[which(ipa$question_type==unique(ipa$question_type)[i]),"response_char"]
+ barplot(table(df), 
+        main=paste0("Barplot Of Question  Type '", unique(ipa$question_type)[i], "'", " Responses"),
+        xlab="Response",
+        ylab="Frequency",
+        col="purple",
+        ylim=c(0, max(table(df)))) 
+}
+
+```
+
+## 2e. Other Slices Of Data
+
+There are many other ways to slice the data. Hopefully the above gives you a good outline for how to explore different ways of doing so, but just for illustration purposes we show how to combine multiple queries. For example, maybe you want to compare how freshman and sophomore women in Professor Darhower's sections vary in their thoughts on presentation type questions. Then the below could give you a glimpse into the differences.
+
+```{r}
+myprof="Professor Darhower"            #change this to whatever you want#
+mycourse=102                           #change this to whatever you want#
+mysection="all"                        #change this to whatever you want#
+mysex="F"                              #change this to whatever you want#
+myage=20                               #change this to whatever you want#
+mytype="presentational"                #change this to whatever you want#
+myq="all"                              #change this to whatever you want#
+myexperience="all"                     #change this to whatever you want#
+                       
+df=ipa[which(if(myprof=="all") TRUE else ipa$prof==myprof & 
+             if(mycourse=="all") TRUE else ipa$course==mycourse & 
+             if(mysex=="all") TRUE else ipa$sex==mysex & 
+             if(myage=="all") TRUE else ipa$age==myage &
+             if(mytype=="all") TRUE else ipa$question_type==mytype &
+             if(myq=="all") TRUE else ipa$question==myq & 
+             if(myexperience=="all") TRUE else ipa$experience==myexperience),"response_char"]
+
+barplot(table(df), 
+          main=paste0(myprof, "'s ",
+                      mycourse, " class", "\n",
+                      mytype, " questions ",
+                      "for ", "<", myage, mysex),
+          xlab="Response",
+          ylab="Frequency",
+          col="darkorange",
+          ylim=c(0, max(table(df))))
+
+
+```
+
+# 3. Analysis
+
+Hopefully you can see from some of the charts above that visuals do not suffice for evaluating a claim (all the above data was randomly generated, and the graphs look quite different!). We evaluate three different questions with statistical techniques which we explain below.
+
+## 3a. Do The IPA Style Tests Add Anxiety?
+
+```{r}
+unique(ipa$question_type)
+type_mean=vector()
+
+for (i in 1:length(unique(ipa$question_type))) {
+  type_mean[i]=mean(ipa[which(ipa$question_type==unique(ipa$question_type)[i]), "response"])
+}
+
+myanova=aov(ipa$response ~ ipa$question_type)
+summary(myanova)
+TukeyHSD(model)
+
+
+```
+
+## 3b. Are Certain Professors More/Less Anxiety-Inducing Than Others?
+
+We are interested in testing whether or not the response for certain professors is statistically different. The direction of the difference can be gleaned visually, but whether or not such a difference is statistically significant must be tested.
+
+We illustrate a few different examples of how this could take place. By summing over the variables, we see, for example (notice the different y-axis):
+
+```{r}
+for (i in 1: length(unique(ipa$prof))) {
+   df=ipa[which(ipa$prof==unique(ipa$prof)[i]),"response_char"]
+
+    barplot(table(df), 
+        main=paste0("Barplot Of ", unique(ipa$prof)[i], " Responses"),
+        xlab="Response",
+        ylab="Frequency",
+        col=rainbow(100)[(33*i) %% 100],                    #pick random color#
+        ylim=c(0, max(table(df))))
+}
+```
+
+To test if the distributions are different, we employ the below method. This is called the Chi-Square Test Of Homogeneity.
+
+```{r}
+alpha=0.05                        #your choice, 5% is often used#
+
+chi_table=ipa |>
+          group_by(prof, response_char) |>
+          summarise(count = n(), .groups='drop') |>
+          pivot_wider(names_from=response_char, values_from=count) |>
+          mutate(RTotal=rowSums(across(-prof)))
+chi_table=data.frame(rbind(chi_table, 
+                   c("CTotal", colSums(chi_table[,-1], na.rm=TRUE))))
+       
+r=nrow(chi_table)                          #4#
+c=ncol(chi_table)                          #7#
+n=as.numeric(chi_table[r, c])              #2880#
+expected=matrix(0, nrow=r-1, ncol=c-2)
+
+for (i in 1:length(unique(ipa$prof))) {
+  for (j in 1:length(unique(ipa$response_char))) {
+    myr=as.numeric(chi_table$RTotal[i])                 #the row total#
+    myc=as.numeric(chi_table[nrow(chi_table), j+1])     #the column total#
+    
+    expected[i,j]=(myr*myc)/n
+  }
+}
+
+observed_vec=as.numeric(as.matrix(chi_table[1:(r-1), 2:(c-1)]))
+expected_vec=as.numeric(expected)
+
+chi_stat=sum((observed_vec-expected_vec)^2/(expected_vec))
+pval=pchisq(chi_stat, (r-2)*(c-3), lower.tail=FALSE)
+
+if (pval<alpha) {
+  print(paste0("With a p-value of ", round(pval,3), ", we reject the null hypothesis of 'No Difference'."))
+} else {
+  print(paste0("With a p-value of ", round(pval,3), ", we fail to reject the null hypothesis of 'No Difference'."))
+}
+
+```
+
+The way to interpret the
+
+There are more sophisticated ways to splice up our data. For example, maybe we are interested
+
+## 3c. Does Past Experience Count?
+
+## 4. Comparison
+
+Let's go and try something weird
+
+```{r}
+
+a=round(rexp(sum(ipa$prof=="Professor Darhower"), 4/3))+1
+a=ifelse(a>5,5,a)
+barplot(table(a))
+
+b=abs(round(rexp(sum(ipa$prof=="Professor Smith"), 4/3))-6)
+b=ifelse(b>5,5,b)
+barplot(table(b))
+
+ipa1=ipa |>
+  mutate(response=if_else(prof=="Professor Darhower", a, 
+                          if_else(prof=="Professor Smith", b, response)))
+
+
+
+```
+
+hi
+
+```{r}
+chi_table=ipa1 |>
+          group_by(prof, response_char) |>
+          summarise(count = n(), .groups='drop') |>
+          pivot_wider(names_from=response_char, values_from=count) |>
+          mutate(RTotal=rowSums(across(-prof)))
+chi_table=data.frame(rbind(chi_table, 
+                   c("CTotal", colSums(chi_table[,-1], na.rm=TRUE))))
+       
+r=nrow(chi_table)
+c=ncol(chi_table)
+n=as.numeric(chi_table[r, c])
+expected=matrix(0, nrow=r-1, ncol=c-2)
+
+for (i in 1:length(unique(ipa1$prof))) {
+  for (j in 1:length(unique(ipa1$response_char))) {
+    myr=as.numeric(chi_table$RTotal[i])
+    myc=as.numeric(chi_table[nrow(chi_table), j+1])
+    
+    expected[i,j]=(myr*myc)/n
+  }
+}
+
+observed_vec=as.numeric(as.matrix(chi_table[1:(r-1), 2:(c-1)]))
+expected_vec=as.numeric(expected)
+
+chi_stat=sum((observed_vec-expected_vec)^2/(expected_vec))
+pval=pchisq(chi_stat, (r-2)*(c-3), lower.tail=FALSE)
+
+if (pval<alpha) {
+  print(paste0("With a p-value of ", round(pval,3), ", we reject the null hypothesis of 'No Difference'."))
+} else {
+  print(paste0("With a p-value of ", round(pval,3), ", we fail to reject the null hypothesis of 'No Difference'."))
+}
+
+```
+
+comparison of weirds
+
+```{r}
+a=c(rep(1, 5), rep(2, 18), rep(3, 50), rep(4, 22), rep(5,5))
+barplot(table(a),
+        main=paste0("Student 1 ", " 'The Normal Curve Enjoyer'"))
+
+
+b=c(rep(5,55), rep(4, 38), rep(3, 5), 2, 1)
+barplot(table(b),
+        main=paste0("Student 2 ", " 'B+ Is A Failing Grade'"))
+```
+
+more weird
+
+```{r}
+a=c(rep(1,8), rep(2,18), rep(3,18), rep(4,30), rep(5,36))
+barplot(table(a),
+        col="red",
+        main=paste0("The IPA instructions were clear"))
+
+b=c(rep(1,9), rep(2,18), rep(3,17), rep(4,32), rep(5,34))
+barplot(table(b),
+        col="red",
+        main=paste0("I understood the rubric and expectations for the interpretive task"))
+
+```
+
+Gender effect
+
+```{r}
+a=factor(c(rep(1,1), rep(2,1), rep(3,9), rep(4,6), rep(5,8)),
+          levels=1:5,
+          labels=c("strongly disagree", "disagree", "neutral", "agree", "strongly agree"),
+          ordered=TRUE)
+
+barplot(table(a), 
+        main=paste0("'I feel comfortable speaking in front of others'", "\n",
+                    "Men in Professor Smith's 102 Class"),
+        col="blue")
+
+
+b=factor(c(rep(1,7), rep(2,8), rep(3,8), rep(4,1), rep(5,1)),
+          levels=1:5,
+          labels=c("strongly disagree", "disagree", "neutral", "agree", "strongly agree"),
+          ordered=TRUE)
+
+barplot(table(b), 
+        main=paste0("'I feel comfortable speaking in front of others'", "\n",
+                    "Women in Professor Smith's 102 Class"),
+        col="pink")
+
+```
+
+unique(ipa\$prof)
+
+for (i in 1:length(unique(ipa$prof))) {
+  print(nrow(ipa[which(ipa$prof==unique(ipa\$prof)\[i\]),\])) }
+
+a=ipa\[which(ipa\$prof=="Professor Darhower"), "response_char"\]
+
+b=round(rexp(nrow(ipa\[which(ipa\$prof=="Professor Smith"),\]), 4/3))+1 b=ifelse(b\>5,5,b)
+
+other=abs(b-6) other barplot(table(other))
+
+b= factor(b, levels=1:5, labels=c("strongly disagree", "disagree", "neutral", "agree", "strongly agree"), ordered=TRUE)
+
+other=factor(other, levels=1:5, labels=c("strongly disagree", "disagree", "neutral", "agree", "strongly agree"), ordered=TRUE)
