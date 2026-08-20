@@ -1,0 +1,295 @@
+---
+title: "建霖实习"
+author: "Zixuan Huang"
+date: "2026-08-14"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message=FALSE)
+```
+
+```{r}
+# Load package
+library(readxl)
+library(writexl)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(scales)
+library(corrplot)
+library(broom)
+library(ggrepel)
+
+# Set working directory
+setwd("C:/Users/youpindao/OneDrive/Desktop/建霖实习")
+
+# Importing files
+financialsheet <- read_excel("financialsheet.xlsx", skip = 3)
+
+# -------- FIX: DELETE summary total row FIRST before date conversion --------
+financialsheet <- financialsheet[-20, ]
+
+# Change year format 
+head(financialsheet$年月)
+financialsheet$年月 <- format(
+  as.Date(as.numeric(financialsheet$年月), origin = "1899-12-30"),
+  "%Y-%m"
+)
+
+# remove columns for data cleaning 
+financialsheet$累计墨西哥产线营业额_财务口径 <- NULL
+financialsheet$所得税费用 <- NULL
+financialsheet$其他成本调整 <- NULL
+financialsheet$工单差异转出 <- NULL
+financialsheet$厂商返利 <- NULL
+financialsheet$营业税金及附加 <- NULL
+financialsheet$资产减值损失 <- NULL
+financialsheet$汇兑损失 <- NULL
+financialsheet$累计其他成本调整 <- NULL
+financialsheet$累计工单差异转出 <- NULL
+financialsheet$累计厂商返利 <- NULL
+financialsheet$累计营业税金及附加 <- NULL
+financialsheet$累计资产减值损失 <- NULL
+financialsheet$累计汇兑损失 <- NULL
+financialsheet$当月检验合格批 <- NULL
+financialsheet$在制库存金额 <- NULL
+# Quick check instead of View()
+View(financialsheet)
+# Export cleaned file
+write_xlsx(
+  financialsheet,
+  "C:/Users/youpindao/OneDrive/Desktop/建霖实习/financialsheet_cleaned.xlsx"
+)
+df_ana <- financialsheet %>%
+  mutate(
+    # "2025-01" 字符串补成完整日期 Date 类型，不需要zoo包
+    年月 = as.Date(paste0(年月, "-01"), format = "%Y-%m-%d")
+  )
+
+# 计算环比、各类占比衍生指标
+df_ana <- df_ana %>%
+  mutate(
+    营业额环比 = (营业额 - lag(营业额)) / lag(营业额),
+    营业成本环比 = (营业成本 - lag(营业成本)) / lag(营业成本),
+    毛利率 = (营业额 - 营业成本) / 营业额,
+    
+    管理费用率 = 管理费用 / 营业额,
+    销售费用率 = 销售费用 / 营业额,
+    研发费用率 = 研发费用 / 营业额,
+    
+    直接材料占比 = 销售成本_直接材料 / 销售成本,
+    直接人工占比 = 销售成本_直接人工 / 销售成本,
+    制造费用占比 = 销售成本_制造费用 / 销售成本,
+    加工费占比 = 销售成本_加工费 / 销售成本,
+    间接材料占比 = 销售成本_间接材料 / 销售成本,
+    
+    北美占比 = 北美营业额_财务口径 / 营业额,
+    中国占比 = 中国营业额_财务口径 / 营业额,
+    欧带占比 = 欧带营业额_财务口径 / 营业额,
+    
+    新品占比 = 新品营业额_财务口径 / 营业额,
+    智能产品占比 = 智能产品营业额_财务口径 / 营业额,
+    泰国产线占比 = 泰国产线营业额_财务口径 / 营业额,
+    
+    采购销售比 = 采购额 / 营业额,
+    库存销售比 = 库存金额 / 营业额
+  )
+
+```
+```{r}
+glimpse(df_ana)
+
+## 1. 营业额 & 毛利率总趋势
+ggplot(df_ana, aes(x = 年月, y = 营业额)) +
+  geom_line(linewidth = 1, color = "#2c3e50") +
+  geom_point(size = 2) +
+  scale_y_continuous(labels = comma) +
+  labs(title = "月度营业额趋势", x = "月份", y = "营业额") +
+  theme_minimal()
+
+ggplot(df_ana, aes(x = 年月, y = 毛利率)) +
+  geom_line(linewidth = 1, color = "#27ae60") +
+  geom_point(size = 2) +
+  geom_hline(yintercept = mean(df_ana$毛利率, na.rm = TRUE), linetype = 2, color = "red") +
+  scale_y_continuous(labels = percent) +
+  labs(title = "月度毛利率趋势，虚线为均值", x = "月份", y = "毛利率") +
+  theme_minimal()
+
+```
+1. 月度营业额趋势图:从月度营业额时序图可以看到，公司月度营业额呈现高度的月度波动特征，没有平稳增长趋势，存在明显的大小月现象。2025 年大部分月份营业额维持在 8‑13 亿区间来回震荡，旺季冲高、次月回落。2026‑07 月份出现极端下跌，营业额大幅跳水，环比跌幅达到‑75%，是全周期最大的下滑月份。整体看业务月度波动性很强，受订单、季节或者排产节奏影响明显，需要重点关注 7 月异常低基数的成因，判断属于短期偶发事件还是持续性业务压力。
+2. 月度毛利率趋势，虚线为均值:样本周期内毛利率均值由红色虚线标出。绝大多数月份毛利率稳定维持在 40%‑45% 区间，整体中枢相对稳固。期间出现两次明显异常点：2026‑01 毛利率大幅下探至 20% 附近，出现阶段性盈利恶化；而 2026‑07 毛利率异常冲高接近 100%，结合前面营业额暴跌，大概率是当月营收规模极低，成本端分摊异常带来的统计异常，不代表真实经营盈利能力。剔除这两个极端异常月份后，公司核心毛利率中枢大致维持 42% 左右，常规月份盈利水平相对稳定。
+
+
+```{r}
+## 2. 按区域分解营业额变动贡献 
+df_region_contrib <- df_ana %>%
+  mutate(
+    北美增量 = 北美营业额_财务口径 - lag(北美营业额_财务口径),
+    中国增量 = 中国营业额_财务口径 - lag(中国营业额_财务口径),
+    欧带增量 = 欧带营业额_财务口径 - lag(欧带营业额_财务口径),
+    总增量 = 营业额 - lag(营业额)
+  ) %>%
+  select(年月,总增量,北美增量,中国增量,欧带增量) %>%
+  filter(!is.na(总增量))
+
+df_region_long <- df_region_contrib %>%
+  pivot_longer(c(北美增量,中国增量,欧带增量),
+               names_to = "Region", values_to = "Contribution")
+
+ggplot(df_region_long, aes(x = 年月, y = Contribution, fill = Region)) +
+  geom_col(position = "stack") +
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(labels = comma) +
+  labs(title = "营业额涨跌归因：区域贡献", subtitle = "正值拉动增长，负值拖累",
+       x = "月份", y = "变动金额") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+3. 营业额涨跌归因：区域贡献（北美/中国/欧带）堆叠柱状图展示每个月营业额环比变动金额，分解为北美、中国、欧带三大区域增量贡献。正值代表该区域拉动整体营收上涨，负值代表该区域拖累整体营收。可以观察到：北美是营收波动的最主要来源，北美增量柱子高度普遍大于中国和欧带，大部分月份总营业额涨跌主要由北美市场驱动；中国与欧带贡献体量更小，正负交替，起到辅助作用。部分月份北美出现大额负向贡献，直接带动整体营业额下滑。说明公司业绩高度依赖北美市场，北美订单的波动直接决定月度营收表现，区域业务集中度风险较高。
+
+```{r}
+## 3. 产品线/泰国产线分解变动贡献 
+df_prod_contrib <- df_ana %>%
+  mutate(
+    新品增量 = 新品营业额_财务口径 - lag(新品营业额_财务口径),
+    智能增量 = 智能产品营业额_财务口径 - lag(智能产品营业额_财务口径),
+    泰国厂增量 = 泰国产线营业额_财务口径 - lag(泰国产线营业额_财务口径),
+    总增量 = 营业额 - lag(营业额)
+  ) %>%
+  select(年月,总增量,新品增量,智能增量,泰国厂增量) %>%
+  filter(!is.na(总增量))
+
+df_prod_long <- df_prod_contrib %>%
+  pivot_longer(c(新品增量,智能增量,泰国厂增量),
+               names_to = "Product_Group", values_to = "Contribution")
+
+ggplot(df_prod_long, aes(x = 年月, y = Contribution, fill = Product_Group)) +
+  geom_col(position = "stack") +
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(labels = comma) +
+  labs(title = "营业额涨跌归因：产品&泰国产线贡献", x = "月份", y = "变动金额") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+本图把营业额环比变动拆解为新品、智能产品、泰国产线三条业务线的增量。可以看到泰国产线、新品的波动幅度显著高于智能产品。智能产品每月贡献变动金额整体偏小，对整体营业额拉动有限；新品与泰国产线是业务波动的主要来源，两者交替出现正向拉动与负向拖累。部分月份泰国产线增量大幅下滑，成为当月营业额下行的重要推手。反映出新品业务、泰国工厂产能 / 订单的变化，是影响月度营收的关键变量，智能产品目前体量尚小，还没有成为稳定增长引擎。
+
+```{r}
+## 4. 成本结构可视化
+df_cost_long <- df_ana %>%
+  select(年月,直接材料=销售成本_直接材料,直接人工=销售成本_直接人工,
+         制造费用=销售成本_制造费用,加工费=销售成本_加工费,间接材料=销售成本_间接材料) %>%
+  pivot_longer(-年月, names_to = "Cost_Item", values_to = "Amount")
+
+ggplot(df_cost_long, aes(x = 年月, y = Amount, fill = Cost_Item)) +
+  geom_area(position = "stack", alpha = 0.75) +
+  scale_y_continuous(labels = comma) +
+  labs(title = "销售成本结构趋势", x = "月份", y = "金额") +
+  theme_minimal()
+
+# Labor cost vs gross margin scatter plot
+ggplot(df_ana, aes(x = 直接人工占比, y = 毛利率)) +
+  geom_point(size = 3, alpha = 0.7) +
+  geom_smooth(method = "lm", se = TRUE, color = "red") +
+  geom_text_repel(aes(label = format(年月,"%y‑%m")), size = 2.8) +
+  scale_x_continuous(labels = percent) +
+  scale_y_continuous(labels = percent) +
+  labs(title = "直接人工占比 vs 毛利率",
+       x = "直接人工占销售成本比", y = "毛利率") +
+  theme_minimal()
+
+```
+堆叠面积图展示销售成本各组成部分月度金额变化。直接材料在销售成本中占绝对大头，是成本第一大项；其次是制造费用、直接人工、加工费、间接材料。成本总额随业务量同步波动，营业额高的月份整体成本规模同步抬升。直接材料占比长期处于高位，意味着原材料价格波动会对公司成本造成显著影响；直接人工、制造费用属于相对刚性的成本项，在营收下行月份，固定成本摊薄效应减弱，会带来毛利率压力。
+散点图展示每个月份直接人工占销售成本比重与毛利率的关系，红色直线为线性拟合，灰色区间为置信区间。从拟合趋势看，样本区间内直接人工占比和毛利率呈现正向相关关系：人工占比抬升的月份，毛利率倾向走高。这个结果和一般认知有差异，并非人工占比越高毛利越低，背后可能是业务结构差异：高毛利订单往往伴随更高人工投入；也可能受样本量小、极端月份异常值干扰。图上可以看到 26‑01、26‑07 两个极端异常样本点，对回归结果有较大扰动，解读该相关关系时需要谨慎，不能直接导出因果。
+
+```{r}
+## 5. 相关性分析（Spearman）
+cor_vars <- df_ana %>%
+  select(营业额,营业成本,
+         北美营业额_财务口径,中国营业额_财务口径,欧带营业额_财务口径,
+         新品营业额_财务口径,智能产品营业额_财务口径,泰国产线营业额_财务口径,
+         销售成本_直接材料,销售成本_直接人工,销售成本_制造费用,
+         采购额,库存金额,管理费用,销售费用,研发费用)
+
+cor_mat <- cor(cor_vars, method = "spearman", use = "pairwise.complete.obs")
+
+cor_p_matrix <- function(df_in){
+  mat <- as.matrix(df_in)
+  n <- ncol(mat)
+  p_out <- matrix(NA,n,n)
+  diag(p_out) <- 0
+  for(i in 1:(n-1)){
+    for(j in (i+1):n){
+      res <- cor.test(mat[,i], mat[,j], method = "spearman")
+      p_out[i,j] <- res$p.value
+      p_out[j,i] <- res$p.value
+    }
+  }
+  colnames(p_out) <- rownames(p_out) <- colnames(mat)
+  return(p_out)
+}
+p_mat <- cor_p_matrix(cor_vars)
+
+corrplot(cor_mat, method = "color", type = "upper",
+         tl.col = "black", tl.srt = 45, tl.cex = 0.65,
+         p.mat = p_mat, sig.level = 0.05, insig = "blank",
+         addCoef.col = "black", number.cex = 0.55,
+         title = "Spearman相关矩阵，空白代表p>0.05不显著", mar = c(0,0,2,0))
+
+```
+使用 Spearman 秩相关，适合非正态、存在异常值的业务财务数据；图中空白格子代表 p>0.05，相关性统计上不显著。
+营业额与营业成本高度显著正相关，业务规模扩大，营业成本同步上升，符合经营常识；
+各区域营业额、各产品线营业额之间部分变量显著相关，说明各业务板块订单有同向波动现象；
+库存金额和采购额和营收部分指标存在显著相关，营收走高带动采购，进而推高库存；
+大量变量之间相关性不显著（显示空白），说明很多业务指标之间没有稳定单调的统计关系，月度驱动因素比较复杂，不能简单用单一指标推断另一个指标变化。
+
+```{r}
+## 6. 多元回归
+mod_rev <- lm(营业额 ~ 北美营业额_财务口径 + 中国营业额_财务口径 +欧带营业额_财务口径 +
+                新品营业额_财务口径 +智能产品营业额_财务口径 +泰国产线营业额_财务口径,
+              data = df_ana)
+summary(mod_rev)
+tidy(mod_rev) %>% arrange(p.value)
+
+mod_margin <- lm(毛利率 ~ 直接材料占比 + 直接人工占比 +制造费用占比 + 加工费占比 + 采购销售比,
+                 data = df_ana)
+summary(mod_margin)
+tidy(mod_margin) %>% arrange(p.value)
+
+par(mfrow = c(2,2))
+plot(mod_rev)
+par(mfrow = c(1,1))
+
+```
+残差 vs 拟合图：残差没有完全随机分布，存在异常点扰动；Q‑Q 图部分尾部偏离对角线，代表数据不完全服从正态假设；Scale‑Location 图显示方差不完全恒定；杠杆图提示存在高杠杆的异常样本点。整体来看营业额回归模型的经典线性回归假设条件没有很好满足，进一步佐证该模型结果可信度低，不建议用于业务预测。
+
+```{r}
+##7. 2025 vs 2026毛利率对比
+df_ana <- df_ana %>% mutate(年份 = factor(format(年月,"%Y")))
+wilcox.test(毛利率 ~ 年份, data = df_ana)
+
+ggplot(df_ana, aes(x=年份, y=毛利率, fill=年份)) +
+  geom_boxplot(alpha=0.7, width=0.5) +
+  geom_jitter(width = 0.12, size = 2) +
+  scale_y_continuous(labels = percent) +
+  labs(title = "2025‑2026毛利率对比") +
+  theme_minimal() + theme(legend.position = "none")
+
+```
+wilcox.test 结果：W = 47, p‑value = 0.7108
+Wilcoxon 秩和检验（非参数检验，适配样本少、存在异常值）用来对比 2025 和 2026 两年毛利率分布是否存在差异。p‑value=0.7108 远大于 0.05，统计上不能拒绝两组没有差异的原假设。
+箱线图也可以看到：剔除极端异常离群点后，两年毛利率箱体的中位数和四分位数区间高度重叠。虽然 2026 出现极高、极低的极端月份，但从统计分布角度，2025、2026 常规月份毛利率中枢没有发生显著改变，两年盈利水平没有出现实质性的整体抬升或者下滑，变化更多来自个别月份极端扰动。
+
+```{r}
+##8.找出波动最大月份
+df_ana %>%
+  select(年月,营业额,营业额环比) %>%
+  arrange(desc(abs(营业额环比))) %>%
+  head(4)
+```
+按营业额环比绝对值排序，筛选出波动最大 4 个月份。2026‑07 环比暴跌 75%，是全样本最大下行月份；2025‑03 是最大上涨月份。可以看到公司经常出现环比正负 20%‑30% 的大幅月度波动，业务月度稳定性偏弱。后续业务分析需要针对这几个高波动月份做业务复盘，识别是订单周期、节假日、工厂排产、还是特殊一次性事件驱动。
