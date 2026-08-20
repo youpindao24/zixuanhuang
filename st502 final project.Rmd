@@ -1,0 +1,185 @@
+---
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+################################################;
+#Author: Zixuan Huang                                                 ;
+#Collaborators: N/A                                                    ;
+#Program Purpose: (ST 502 Final R Project)                            ;
+#Date: 4/29/2024                                            ;
+################################################;
+
+Introduction for the MCNemar test and where it is used
+
+The McNemar test is a statistical tool specifically designed to analyze paired nominal data. This makes it ideal for studies that evaluate the efficacy of two different interventions on the same subjects. Utilizing a 2x2 contingency table, this non-parametric method assesses the significance of differences in the marginal proportions between the tested categories. Its utility is especially recognized in the fields of medical and psychological research, where it is critical to discern the impact of new treatments or diagnostic approaches compared to established ones. The test is particularly suited for studies with binary outcomes, such as before-and-after assessments, matched case-control studies, and crossover trials. This makes it an invaluable tool in clinical settings where precise evaluations are necessary to determine the effectiveness of interventions (1).
+
+# Task 1 for analyzing a dataset
+
+```{r Task1}
+# Define the observed data matrix
+data <- matrix(c(85, 15, 40, 110), nrow = 2, byrow = TRUE)
+
+# Create the column names for the data matrix
+colnames(data) <- c("Drug A Relief status success","Drug A Relief status Failure")
+
+# Create the row names for the data matrix
+rownames(data) <- c("Drug B Relief status success","Drug B Relief status Failure")
+
+# Print the data matrix
+print(data)
+
+# Perform McNemar's test
+mcnemar_result <- mcnemar.test(data, correct = FALSE)
+
+# Print the test statistic, p-value, and rejection region
+print(mcnemar_result)
+
+# Define the significance level (alpha)
+alpha <- 0.05  
+
+# Calculate the critical value from the chi-squared distribution
+critical_value <- qchisq(1 - alpha, df = 1)
+ 
+# Print out the critical value
+print(critical_value)
+```
+So our p-value = 0.000749, since p-value < 0.05, we reject the null hypothesis. Critical value is 3.841459.
+Our rejection region is $$\text{Rejection Region: } \{\chi^2_{\text{obs}} : \chi^2_{\text{obs}} > \chi^2_{0.95,1} = 3.841459\}$$
+
+# Task 2 Deriving Parts of the Test
+Part 1
+To show that 
+$${\pi}_{1.} = {\pi}_{.1}\,\text{and}\,{\pi}_{2.} = {\pi}_{.2}\,\text{is equivalent to}\,{\pi}_{12} = {\pi}_{21}$$ 
+$${\pi}_{11}+{\pi}_{21}={\pi}_{.1}\enspace{\pi}_{11}+{\pi}_{12}={\pi}_{1.}\\{\pi}_{12}+{\pi}_{22}={\pi}_{.2}\enspace{\pi}_{21}+{\pi}_{22}={\pi}_{2.}$$
+ $$\text{given that}\,{\pi}_{1.}={\pi}_{.1}\,\text{,we get:}\\{\pi}_{11}+{\pi}_{12}={\pi}_{11}+{\pi}_{21}
+ \\\text{hence}\,{\pi}_{12}={\pi}_{21}\,$$
+ $$\text{given that}\,{\pi}_{2.}={\pi}_{.2}\,\text{,we get:}\\{\pi}_{12}+{\pi}_{22}={\pi}_{21}+{\pi}_{22}
+ \\\text{hence}\,{\pi}_{12}={\pi}_{21}\,$$
+Part 2 
+Our general likelihood is given by: 
+$${L({\pi}_{11},{\pi}_{12},{\pi}_{21},{\pi}_{22})}\propto{\pi}^{n_{11}}_{11}{\pi}^{n_{12}}_{12}{\pi}^{n_{21}}_{21}{\pi}^{n_{22}}_{22} $$
+The log likelihood is then:
+$${\ell({\pi}_{11},{\pi}_{12},{\pi}_{21},{\pi}_{22})}={c}+{n_{11}}ln({\pi_{11})}+{n_{12}}ln({\pi_{12})}+{n_{21}}ln({\pi_{21})}+{n_{22}}ln({\pi_{22})}$$
+Under the null restriction, we can write it as: 
+$${\ell({\pi}_{11},{\pi}_{12},{\pi}_{21},{\pi}_{22})}={c}+{\sum_{i=1}^{2}}{\sum_{j=1}^{2}}n_{ij}ln(\pi_{ij})$$
+And we can write it as: $${\pi_{11}}+{\pi_{12}}+{\pi_{21}}+{\pi_{22}}=1$$
+Then we apply the Lagrange multiplier with $${\lambda_1}\,\text{and}\,{\lambda_2}$$
+$${\ell}({\pi}_{11},{\pi}_{12},{\pi}_{21},{\pi}_{22},{\lambda_1},{\lambda_2})={n_{11}}\ln({\pi_{11}})+{n_{12}}\ln({\pi_{12}})+{n_{21}}\ln({\pi_{21}})+{n_{22}}\ln({\pi_{22}})-{\lambda_1}(\pi_{11}+\pi_{12}+\pi_{21}+\pi_{22}-1)-{\lambda_2}(\pi_{12}-\pi_{11})$$
+
+
+We set each derivative to 0, we get: $$\frac{\partial \ell}{\partial \pi_{11}}=\frac{n_{11}}{\pi_{11}}-{\lambda_1}=0$$
+$$\frac{\partial \ell}{\partial \pi_{12}}=\frac{n_{12}}{\pi_{12}}-{\lambda_1}-{\lambda_2}=0$$
+$$\frac{\partial \ell}{\partial \pi_{21}}=\frac{n_{21}}{\pi_{21}}-{\lambda_1}+{\lambda_2}=0$$
+$$\frac{\partial \ell}{\partial \pi_{22}}=\frac{n_{22}}{\pi_{22}}-{\lambda_1}=0$$
+$$\frac{\partial \ell}{\partial \lambda_1}=-(\pi_{11}+\pi_{12}+\pi_{21}+\pi_{22}-1)=0$$
+$$\frac{\partial \ell}{\partial \lambda_2}=-(\pi_{12}-\pi_{21})=0$$
+By plugging those value in, we get: 
+$$\pi_{11}=\frac{n_{11}}{\lambda_1}$$
+$$\pi_{12}=\frac{n_{12}}{\lambda_1+\lambda_2}$$
+$$\pi_{21}=\frac{n_{21}}{\lambda_1-\lambda_2}$$
+$$\pi_{22}=\frac{n_{22}}{\lambda_1}$$
+$${\pi_{11}+\pi_{12}+\pi_{21}+\pi_{22}}={1}$$
+$${-(\pi_{12}-\pi_{21})}={0}\quad\text{so we get that:}\,{\pi_{12}=\pi_{21}}$$
+By adding $$\frac{\partial \ell}{\partial \pi_{12}}=\frac{n_{12}}{\pi_{12}}-{\lambda_1}-{\lambda_2}=0$$ $$\frac{\partial \ell}{\partial \pi_{21}}=\frac{n_{21}}{\pi_{21}}-{\lambda_1}+{\lambda_2}=0$$ together, we get: $$\frac{n_{12}}{\pi_{12}}+\frac{n_{21}}{\pi_{12}}-2\lambda_1=0$$
+Hence we can get: $$\lambda_1=\frac{n_{12}+n_{21}}{2\pi_{12}}\quad\lambda_2={0}$$
+By plugging in the $$\pi_{11},\,\pi_{12},\,\pi_{21},\,\pi_{22}\,\text{that we solved earlier into the equation}\,{\pi_{11}+\pi_{12}+\pi_{21}+\pi_{22}}={1}\text{,we get:}$$
+$$\frac{n_{11}}{\lambda_1}+\frac{n_{12}+n_{21}}{\lambda_1}+\frac{n_{22}}{\lambda_1}={1}$$
+$${\lambda_1}={n_{11}+n_{12}+n_{21}+n_{22}}=n\quad\text{the sum of each individual count is equal to the total count n}$$
+$$\hat\pi_{11}=\frac{n_{11}}{n}\quad \hat\pi_{12}=\frac{n_{12}+n_{21}}{2n}\quad \hat\pi_{21}=\frac{n_{12}+n_{21}}{2n}\quad \hat\pi_{22}=\frac{n_{22}}{n}$$
+Part 3 
+To show that $$
+-2ln\frac{L(\widetilde{\pi}_{11}, \widetilde{\pi}_{12}, \widetilde{\pi}_{21}, \widetilde{\pi}_{22})}{\ L(\hat{\pi}_{11}, \hat{\pi}_{12}, \hat{\pi}_{21}, \hat{\pi}_{22})} = 2\sum_{i=1}^{2}\sum_{j=1}^{2}{Obs_{ij}}ln(\frac{Obs_{ij}}{Exp_{ij}})$$
+We observed LRT that: $$\Lambda=\frac{L(\widetilde{\pi}_{11}, \widetilde{\pi}_{12}, \widetilde{\pi}_{21}, \widetilde{\pi}_{22})}{\ L(\hat{\pi}_{11}, \hat{\pi}_{12}, \hat{\pi}_{21}, \hat{\pi}_{22})} =\frac{{\widetilde\pi_{11}^{n_{11}}\widetilde\pi_{12}^{n_{12}}\widetilde\pi_{21}^{n_{21}}\widetilde\pi_{22}^{n_{22}}}}{{\hat\pi_{11}^{n_{11}}\hat\pi_{12}^{n_{12}}\hat\pi_{21}^{n_{21}}\hat\pi_{22}^{n_{22}}}}= \prod_{i=1}^{2}\prod_{j=1}^{2}(\frac{\widetilde\pi_{ij}}{\hat\pi_{ij}})^{n_{ij}}$$
+$$-2ln(\Lambda)=-2\sum_{i=1}^{2}\sum_{j=1}^{2}{n_{ij}}ln(\frac{\widetilde\pi_{ij}}{\hat\pi_{ij}})=2\sum_{i=1}^{2}\sum_{j=1}^{2}{n_{ij}}ln(\frac{\hat\pi_{ij}}{\widetilde\pi_{ij}})$$
+We know that $$\hat\pi_{ij}=\frac{n_{ij}}{n}=2\sum_{i=1}^{2}\sum_{j=1}^{2}{n_{ij}}ln(\frac{n_{ij}}{n\widetilde\pi_{ij}})=2\sum_{i=1}^{2}\sum_{j=1}^{2}{Obs_{ij}}ln(\frac{Obs_{ij}}{Exp_{ij}})$$
+By using out large-sample theory, $$-2ln(\Lambda)\stackrel{\mathrm{H}_0}{\sim} \chi^2_{\text{dim}(\Omega)-\text{dim}(\omega)}$$
+Since $${\text{dim}(\Omega)-\text{dim}(\omega)}=(I-1)(J-1)=(2-1)(2-1)=1$$ We proved that the appropriate reference distribution has 1 degree of freedom. 
+
+Part 4 
+From part 2, we know that $$\hat\pi_{11}=\frac{n_{11}}{n}\quad \hat\pi_{12}=\frac{n_{12}+n_{21}}{2n}\quad \hat\pi_{21}=\frac{n_{12}+n_{21}}{2n}\quad \hat\pi_{22}=\frac{n_{22}}{n}$$
+$${E_{11}}=n{\hat\pi_{11}}=n_{11}\,{E_{12}}=n{\hat\pi_{12}}=\frac{n_{12}+n_{11}}{2}\,{E_{21}}=n{\hat\pi_{21}}=\frac{n_{12}+n_{11}}{2}\,{E_{22}}=n{\hat\pi_{22}}=n_{22}$$
+$$\chi^2=\frac{(n_{11}-n_{11})^2}{n_{11}}+\frac{(n_{12}+0.5n_{12}-0.5n_{21})^2}{0.5{n_{12}+0.5{n_{21}}}}+\frac{(n_{12}-0.5n_{12}+0.5n_{21})^2}{0.5{n_{12}+0.5{n_{21}}}}+\frac{(n_{22}-n_{22})^2}{n_{22}}$$
+$$\chi^2=\frac{(n_{12}+0.5n_{12}-0.5n_{21})^2}{0.5{n_{12}+0.5{n_{21}}}}+\frac{(n_{12}-0.5n_{12}+0.5n_{21})^2}{0.5{n_{12}+0.5{n_{21}}}}$$
+By simplifying the equation, we get: $$\chi^2=\frac{(n_{12}-n_{21})^2}{{n_{12}+n_{21}}}$$
+Thus $$\chi^2=\sum_{i=1}^{2}\sum_{j=1}^{2}\frac{(Obs_{ij}-Exp_{ij})^2}{Exp{ij}}=\frac{(n_{12}-n_{21})^2}{{n_{12}+n_{21}}}$$
+
+# Task 3 Simulation study
+
+In the simulation study for the McNemar’s test project, we aim to assess the test's ability to control Type I error and its power under various conditions. We'll generate 1,000 datasets using the draw.correlated.binary() function from the MultiRNG package in R, manipulating sample sizes (25, 40, 80, 200), probabilities of success for two treatments ('drug A' and 'drug B'), and correlations (0, 0.2, 0.5). McNemar’s test will be applied to each dataset to compute the proportion of rejections, helping estimate the test’s power across different scenarios. This study will help visualize how sample size, treatment differences, and correlations impact the effectiveness of McNemar’s test, with results presented through detailed plots and analyses in the final report. Below is my R code for simulation study:
+```{r}
+# Load necessary libraries
+library(MultiRNG)
+library(doParallel)
+
+# Set seed
+set.seed(123)
+# Set up parallel processing
+registerDoParallel(cores = detectCores() - 1)
+
+# Function to simulate data and perform McNemar's test
+simulate_and_test <- function(n, pi1, pi2, rho) {
+  corr_mat <- matrix(c(1, rho, rho, 1), nrow = 2)
+  data <- draw.correlated.binary(no.row = n, d = 2, prop.vec = c(pi1, pi2), corr.mat = corr_mat)
+  table <- matrix(c(sum(data[,1] == 1 & data[,2] == 1),
+                    sum(data[,1] == 1 & data[,2] == 0),
+                    sum(data[,1] == 0 & data[,2] == 1),
+                    sum(data[,1] == 0 & data[,2] == 0)), nrow = 2)
+
+  # Check for zero cells and adjust if necessary
+  if (min(table[1:2, 2:1]) == 0) {
+    table[1:2, 2:1] <- table[1:2, 2:1] + 0.5
+  }
+
+  result <- tryCatch({
+    test <- mcnemar.test(table, correct = FALSE)
+    test$p.value < 0.05
+  }, error = function(e) {
+    FALSE
+  }, warning = function(w) {
+    FALSE
+  })
+
+  return(result)
+}
+
+# Simulation parameters
+sample_sizes <- c(25, 40, 80, 200)
+pis <- c(0.1, 0.4, 0.8)
+correlations <- c(0, 0.2, 0.5)
+differences <- c(0, 0.02, 0.05, 0.1)
+num_simulations <- 1000
+
+# Store results in a data frame
+results <- expand.grid(n = sample_sizes, pi1 = pis, diff = differences, rho = correlations)
+results$power <- NA
+
+# Run simulations in parallel
+results$power <- foreach(i = 1:nrow(results), .combine = c, .packages = c("MultiRNG")) %dopar% {
+  pi2 <- results$pi1[i] + results$diff[i]
+  mean(replicate(num_simulations, simulate_and_test(results$n[i], results$pi1[i], pi2, results$rho[i])))
+}
+
+# Plotting the results
+library(ggplot2)
+ggplot(results, aes(x = diff, y = power, group = interaction(factor(pi1), factor(n), factor(rho)), color = factor(rho))) +
+  geom_line() +
+  facet_grid(pi1 ~ n, scales = "free_y") +
+  geom_hline(yintercept = 0.05, linetype = "solid", color = "black") +  # Add horizontal line at y = 0.05
+  labs(title = "Power plot for different sample sizes",
+       x = "pi2 - pi1",
+       y = "Proportion Rejected",
+       color = "Correlation") +
+  theme_minimal() +
+  theme(
+    strip.background = element_rect(fill = "grey", colour = "black"),
+    strip.text.x = element_text(face = "plain", color = "black"),
+    strip.text.y = element_blank(),  # Hides the facet strip text for pi1
+    legend.position = "right"
+  ) 
+```
+The first row of plot is pi1=0.1. For the sample sample when n =25. At this level, the smaple size is relatively small, so the power of the test to detect a significant difference between proportions is limited. As a result, the proportion of rejected hypotheses is low. As the sample sample size increases to n=50,100,200. I notice that the statistical test gains more power to detect smaller differences between the expected and observed proportions, leading to a higher rate of rejecting the null hypothesis. For the second row of the plot is pi1=0.4. The pattern observed here is similar to the first row, but the effect is more pronounced due to the larger value of pi1. The deviations from the null hypothesis become more detectable as sample size increases from n=25 to 50,100,200. The third row of plot is pi1=0.8. As the sample size increases from n=25 to 50,100,200, the power increases further, and the proportion of rejections continues to climb, reflecting the test's increasing sensitivity to detect the true proportion difference. 
+
+(1) Reference: Sundjaja, J. H., Shrestha, R., & Krishan, K. (2023). McNemar And Mann-Whitney U Tests. In StatPearls [Internet]. StatPearls Publishing. Retrieved from https://www.ncbi.nlm.nih.gov/books/NBK560699/
