@@ -1,0 +1,195 @@
+---
+title: "TCGA research"
+
+output: html_document
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval =T,
+  echo=F,
+  include=T,
+  warning = F
+)
+
+
+
+
+```
+
+## This code performs survival analysis for the specified genes using TCGA data. Dr. Min Chen wants survival analysis for the following genes:
+
+### ITGB4
+### HIF1A
+### PTPRZ1
+
+## ITGB4 Analysis
+### Median Cutoff: From the plot of ITGB4 (median cutoff), we find a positive correlation with overall survival in the triple-negative subtype of breast cancer samples, with a p-value = 0.184. However, this correlation is not statistically significant.
+
+### 25% and 75% Quantiles: From the plot of ITGB4 (25% and 75% quantiles), we find a positive correlation with overall survival, with a p-value = 0.579. This correlation is not statistically significant.
+
+### Best Cutoff: From the plot of ITGB4 (best cutoff), we find a positive correlation with overall survival, with a p-value = 0.67. This correlation is not statistically significant.
+
+## HIF1A Analysis
+### Median Cutoff: From the plot of HIF1A (median cutoff), we find a positive correlation with overall survival in the triple-negative subtype of breast cancer samples, with a p-value = 0.649. However, this correlation is not statistically significant.
+
+### 25% and 75% Quantiles: From the plot of HIF1A (25% and 75% quantiles), we find a positive correlation with overall survival, with a p-value = 0.461. This correlation is not statistically significant.
+
+### Best Cutoff: From the plot of HIF1A (best cutoff), we find a positive correlation with overall survival, with a p-value = 0.888. This correlation is not statistically significant.
+
+## PTPRZ1 Analysis
+### Median Cutoff: From the plot of PTPRZ1 (median cutoff), we find a positive correlation with overall survival in the triple-negative subtype of breast cancer samples, with a p-value = 0.563. However, this correlation is not statistically significant.
+
+### 25% and 75% Quantiles: From the plot of PTPRZ1 (25% and 75% quantiles), we find a positive correlation with overall survival, with a p-value = 0.839. This correlation is not statistically significant.
+
+### Best Cutoff: From the plot of PTPRZ1 (best cutoff), we find a positive correlation with overall survival, with a p-value = 0.77. This correlation is not statistically significant.
+
+```{r}
+# Set the working directory
+setwd("C:/Users/Zixuan Huang/Desktop/Min_Chen")
+
+# Define the genes and their Ensembl IDs
+gene.target <- c("ITGB4", "HIF1A", "PTPRZ1")  
+gene.ensemble <- c("ENSG00000132470", "ENSG00000100644", "ENSG00000106278")
+
+file.input.detail <- c("TCGA-BRCA [Triple Negative Breast Cancer]")
+tcga.short <- c("BRCA")
+
+# Source the custom survival plot function
+library(openxlsx)
+library(dplyr)
+library(maxstat)
+
+source("C:/Users/Zixuan Huang/Desktop/Min_Chen/source/mysurvplot_gene-expr-dichotomized.R")
+
+for (f_id in 1:length(tcga.short)) {
+  
+  # Load the pre-processed RNA-Seq data
+  load(paste0("C:/Users/Zixuan Huang/Desktop/Min_Chen/data/TCGA-BRCA_TPM_Harmonized/rnaseq.RData"))
+  
+  gene.expr <- expr.tpm[rownames(expr.tpm) %in% gene.ensemble, ]
+  gene.expr.t <- as.data.frame(t(gene.expr), stringsAsFactors = FALSE)
+  
+  # Process tumor samples
+  gene.expr.t$barcode <- rownames(gene.expr.t)
+  gene.expr.t$patient_id <- substr(gene.expr.t$barcode, 1, 12)
+  gene.expr.t$sample_type <- as.numeric(substr(gene.expr.t$barcode, 14, 15))
+  gene.expr.t.tumor <- gene.expr.t[gene.expr.t$sample_type >= 1 & gene.expr.t$sample_type <= 9, ]
+  
+  # Filter out duplicate tumor samples
+  patients_dup <- unique(gene.expr.t.tumor$patient_id[duplicated(gene.expr.t.tumor$patient_id)])
+  gene.expr.t.tumor.uniq <- gene.expr.t.tumor[!gene.expr.t.tumor$patient_id %in% patients_dup, ]
+  
+  # Deduplicate by averaging replicates
+  for (dup_id in seq_along(patients_dup)) {
+    patient.temp <- patients_dup[dup_id]
+    expr.temp <- colMeans(gene.expr.t.tumor[gene.expr.t.tumor$patient_id == patient.temp, 1:length(gene.target)])
+    gene.expr.t.tumor.uniq <- rbind(gene.expr.t.tumor.uniq, c(expr.temp, "dedup", patient.temp, "tumor"))
+  }
+  
+  # Load the clinical data
+  clinical <- read.csv(file = paste0("C:/Users/Zixuan Huang/Desktop/Min_Chen/data/TCGA-BRCA_TPM_Harmonized/tcga-brca_firehose-legacy_survival_manually_picked.csv"), 
+                       header = TRUE, stringsAsFactors = FALSE, na.strings = c("", "NA"))
+  colnames(clinical)[2] <- "patient_id"
+  
+  # Deduplicate the clinical data
+  clinical <- clinical[!duplicated(clinical$patient_id), ]
+  
+  # Load TNBC patient data
+  TNBC.patients <- read.xlsx(xlsxFile = "C:/Users/Zixuan Huang/Desktop/Min_Chen/data/41467_2021_26502_MOESM5_ESM.xlsx", sheet = "A-TCGA_TNBC_subtype")
+  colnames(TNBC.patients)[2] <- "patient_id"
+  
+  # Filter clinical data for TNBC patients
+  clinical_TNBC <- clinical %>% filter(patient_id %in% TNBC.patients$patient_id)
+  
+  # Merge gene expression data with clinical data
+  data.surv.all <- merge(gene.expr.t.tumor.uniq, clinical_TNBC, by = "patient_id")
+  
+  survival.use <- data.surv.all[!is.na(data.surv.all$Overall.Survival.Status) & !is.na(data.surv.all$Overall.Survival..Months.), ]
+  survival.use$Overall.Survival.Status <- ifelse(survival.use$Overall.Survival.Status == "1:DECEASED", 1, 0)
+  
+  for (gene_id in 1:length(gene.ensemble)) {
+    # Perform survival analysis and generate plots
+    
+    time0 <- survival.use[, "Overall.Survival..Months."] / 12
+    event0 <- as.numeric(survival.use[, "Overall.Survival.Status"])
+    gene1_data <- log2(as.numeric(survival.use[, grep(gene.ensemble[gene_id], names(survival.use))]))
+    
+    # Median cutoff
+    cutoff.j <- quantile(gene1_data, 0.5)
+    group10 <- ifelse(gene1_data <= cutoff.j, 1, 2)
+    
+    # Plot survival curves for median cutoff
+    survplot(time0, event0, group10, gene1_data,
+             label = c(paste("Low ", gene.target[gene_id], ": <= ", signif(cutoff.j, digits = 3), " (median)", sep = ""),
+                       paste("High ", gene.target[gene_id], ": > ", signif(cutoff.j, digits = 3), " (median)", sep = "")),
+             file.input.detail[f_id],
+             p_value_best = NA, ylab_s = "Alive (*100%)")
+    
+    # 25% and 75% quantile cutoffs
+    cutoff.25 <- quantile(gene1_data, 0.25)
+    cutoff.75 <- quantile(gene1_data, 0.75)
+    group10 <- ifelse(gene1_data <= cutoff.25, 1, ifelse(gene1_data >= cutoff.75, 2, 0))
+    
+    # Plot survival curves for 25% and 75% quantile cutoffs
+    survplot(time0, event0, group10, gene1_data,
+             label = c(paste("Low ", gene.target[gene_id], ": <= ", signif(cutoff.25, digits = 3), " (25% quantile)", sep = ""),
+                       paste("High ", gene.target[gene_id], ": >= ", signif(cutoff.75, digits = 3), " (75% quantile)", sep = "")),
+             file.input.detail[f_id],
+             p_value_best = NA, ylab_s = "Alive (*100%)")
+    
+    # Best cutoff using maxstat
+    require(maxstat)
+    data.best <- data.frame(t.best = time0, event.best = event0, gene.best = gene1_data, stringsAsFactors = FALSE)
+    bypackage1 <- maxstat.test(Surv(t.best, event.best) ~ gene.best, data = data.best, smethod = "LogRank", pmethod = "condMC", B = 100000)
+    cutoff.best <- as.numeric(bypackage1$estimate)
+    group11 <- ifelse(gene1_data <= cutoff.best, 1, 2)
+    
+    # Plot survival curves for the best cutoff
+    survplot(time0, event0, group11, gene1_data,
+             label = c(paste("Low ", gene.target[gene_id], ": <= ", signif(cutoff.best, digits = 3), " (best cutoff)", sep = ""),
+                       paste("High ", gene.target[gene_id], ": > ", signif(cutoff.best, digits = 3), " (best cutoff)", sep = "")),
+             file.input.detail[f_id],
+             p_value_best = bypackage1$p.value, ylab_s = "Alive (*100%)")
+  }
+}
+
+
+```
+
+## Dr.Min Chen is interested to see if there is co-occurrence of the mutations among the genes: ITGA6, ITGB4, UCHL1, H1F1A, PTPRZ1, EGFR within the TNBC subtype of breast cancer patients. 
+## From the oncoplot, it seems that all the gene mutations specificed by Dr.Chen are pretty rare, and we didn't find any strong evidence for co-occurence among these mutations.
+
+```{r}
+# Load the necessary libraries
+library(maftools)
+library(readxl)
+library(dplyr)
+
+# Specify the paths to the files
+maf_file <- "C:/Users/Zixuan Huang/Desktop/Min_Chen/data/data_mutations.txt" 
+excel_file <- "C:/Users/Zixuan Huang/Desktop/Min_Chen/data/41467_2021_26502_MOESM5_ESM.xlsx"
+
+# Read the MAF file
+maf_data <- read.maf(maf = maf_file, isTCGA = TRUE)
+
+# Load the relevant sheet with TNBC clinical data
+tnbc_clinical_data <- read_excel(excel_file, sheet = "A-TCGA_TNBC_subtype")
+
+# Extract TNBC patient IDs from the clinical data
+tnbc_patients <- tnbc_clinical_data$patient
+
+# Filter the MAF data to include only the TNBC patients
+tnbc_maf <- subsetMaf(maf = maf_data, tsb = tnbc_patients)
+
+# Define the genes of interest
+genes_of_interest <- c("ITGA6", "ITGB4", "UCHL1", "HIF1A", "PTPRZ1", "EGFR")
+
+# Oncoplot for the genes of interest in the TNBC subset
+oncoplot(maf = tnbc_maf, genes = genes_of_interest)
+
+# Exclusive/co-occurrence event analysis on the genes of interest in the TNBC subset
+somaticInteractions(maf = tnbc_maf, genes = genes_of_interest, pvalue = c(0.05, 0.1))
+```
