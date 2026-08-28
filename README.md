@@ -1,6 +1,6 @@
 # Hi, I'm Zixuan (Jerry) Huang 👋
 
-I am a Statistics Ph.D. Candidate specializing at the intersection of Advanced Statistical Inference, Machine Learning, and AI Evaluation. My core objective is to leverage rigorous mathematical frameworks to build scalable, production-grade Data Science solutions for the frontier technology industry.
+I am a first‑year PhD Candidate in Statistics, specializing at the intersection of Advanced Statistical Inference, Machine Learning, and AI Evaluation. My core objective is to leverage rigorous mathematical frameworks to build scalable, production‑grade data‑science solutions for the frontier‑technology industry. I hold a bachelor’s degree in Mathematical Economics and Statistics from the University of Kentucky, and a master’s degree in Statistics from North Carolina State University.
 
 ---
 
