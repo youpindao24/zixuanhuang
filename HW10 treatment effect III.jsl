@@ -1,0 +1,83 @@
+Local Here(
+	Open( "C:\Users\youpindao\OneDrive\Desktop\ST531\IBDeval.jsl", Script );
+	Open( "C:\Users\youpindao\OneDrive\Desktop\ST531\HW10 matrix I.jsl", Script );
+	Open(
+		"C:\Users\youpindao\OneDrive\Desktop\ST531\HW10 treament effect II.jsl",
+		Script
+	);
+	table2 = Open( "C:\Users\youpindao\OneDrive\Desktop\ST531\HW10 table III.jmp" );
+	New Window( "HW10 table III - Fit Least Squares",
+		table2 << Fit Model(
+			Y( :Y ),
+			Effects( :Block, :Treatments ),
+			Personality( "Standard Least Squares" ),
+			Emphasis( "Minimal Report" ),
+			Run(
+				:Y << {Summary of Fit( 1 ), Analysis of Variance( 1 ),
+				Parameter Estimates( 1 ), Lack of Fit( 0 ), Scaled Estimates( 0 ),
+				Plot Actual by Predicted( 0 ), Plot Regression( 0 ),
+				Plot Residual by Predicted( 0 ), Plot Studentized Residuals( 0 ),
+				Plot Effect Leverage( 0 ), Plot Residual by Normal Quantiles( 0 ),
+				Box Cox Y Transformation( 0 )}
+			)
+		)
+	) << Move Window( 606, 15 ) << Set Window Icon( "Model" );
+	table1 = Open( "C:\Users\youpindao\OneDrive\Desktop\ST531\CO.jmp", invisible );
+	(table3 = New Table( "Untitled 7",
+		Add Rows( 9 ),
+		New Column( "Col1",
+			Numeric,
+			"Continuous",
+			Format( "Best", 12 ),
+			Set Values( [3, 1, 1, 1, 1, 0, 1, 0, 1] )
+		),
+		New Column( "Col2",
+			Numeric,
+			"Continuous",
+			Format( "Best", 12 ),
+			Set Values( [1, 3, 1, 0, 1, 1, 1, 1, 0] )
+		),
+		New Column( "Col3",
+			Numeric,
+			"Continuous",
+			Format( "Best", 12 ),
+			Set Values( [1, 1, 3, 1, 0, 1, 0, 1, 1] )
+		),
+		New Column( "Col4",
+			Numeric,
+			"Continuous",
+			Format( "Best", 12 ),
+			Set Values( [1, 0, 1, 3, 1, 1, 1, 1, 0] )
+		),
+		New Column( "Col5",
+			Numeric,
+			"Continuous",
+			Format( "Best", 12 ),
+			Set Values( [1, 1, 0, 1, 3, 1, 0, 1, 1] )
+		),
+		New Column( "Col6",
+			Numeric,
+			"Continuous",
+			Format( "Best", 12 ),
+			Set Values( [0, 1, 1, 1, 1, 3, 1, 0, 1] )
+		),
+		New Column( "Col7",
+			Numeric,
+			"Continuous",
+			Format( "Best", 12 ),
+			Set Values( [1, 1, 0, 1, 0, 1, 3, 1, 1] )
+		),
+		New Column( "Col8",
+			Numeric,
+			"Continuous",
+			Format( "Best", 12 ),
+			Set Values( [0, 1, 1, 1, 1, 0, 1, 3, 1] )
+		),
+		New Column( "Col9",
+			Numeric,
+			"Continuous",
+			Format( "Best", 12 ),
+			Set Values( [1, 0, 1, 0, 1, 1, 1, 1, 3] )
+		)
+	)) << Run Formulas;
+)

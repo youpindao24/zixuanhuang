@@ -1,0 +1,118 @@
+Local Here(
+	table1 = Open( "C:\Users\youpindao\OneDrive\Desktop\ST531\HW4.jmp" );
+	New Window( "HW4 - Fit Least Squares",
+		table1 << Fit Model(
+			Y( :"Liters/minute"n ),
+			Effects( :Level ),
+			Personality( "Standard Least Squares" ),
+			Emphasis( "Effect Leverage" ),
+			Run(
+				:"Liters/minute"n << {Summary of Fit( 1 ), Analysis of Variance( 1 ),
+				Parameter Estimates( 1 ), Lack of Fit( 0 ), Scaled Estimates( 0 ),
+				Plot Actual by Predicted( 1 ), Plot Regression( 0 ),
+				Plot Residual by Predicted( 1 ), Plot Studentized Residuals( 0 ),
+				Plot Effect Leverage( 1 ), Plot Residual by Normal Quantiles( 0 ),
+				Box Cox Y Transformation( 0 ), {:Level <<
+				{Power Analysis(
+					Alpha( 0.05 ),
+					Sigma( 0.037274 ),
+					Delta( 0.02358 ),
+					Number( 20, 40, 5 ),
+					Solve for Power,
+					Done
+				)}}}
+			)
+		)
+	) << Move Window( -18, -18 ) << Size Window( 1553, 881 ) << Minimize Window <<
+	Set Window Icon( "Model" );
+	New Window( "HW4 - Fit Least Squares 2",
+		table1 << Fit Model(
+			Y( :"Liters/minute"n ),
+			Effects( :Level ),
+			Personality( "Standard Least Squares" ),
+			Emphasis( "Effect Leverage" ),
+			Run(
+				:"Liters/minute"n << {Summary of Fit( 1 ), Analysis of Variance( 1 ),
+				Parameter Estimates( 1 ), Lack of Fit( 0 ), Scaled Estimates( 0 ),
+				Plot Actual by Predicted( 1 ), Plot Regression( 0 ),
+				Plot Residual by Predicted( 1 ), Plot Studentized Residuals( 0 ),
+				Plot Effect Leverage( 1 ), Plot Residual by Normal Quantiles( 0 ),
+				Box Cox Y Transformation( 0 ), {:Level <<
+				{LSMeans Contrast( [-1 0 0 0 1] )}}}
+			),
+			SendToReport(
+				Dispatch(
+					{"Response Liters/minute", "Level", "Contrast"},
+					"Test Detail",
+					OutlineBox,
+					{Close( 0 )}
+				),
+				Dispatch(
+					{"Response Liters/minute", "Level", "Contrast"},
+					"Parameter Function",
+					OutlineBox,
+					{Close( 0 )}
+				)
+			)
+		)
+	) << Move Window( 624, 36 ) << Size Window( 930, 796 ) << Minimize Window <<
+	Set Window Icon( "Model" );
+	table2 = Open( "C:\Users\youpindao\OneDrive\Desktop\ST531\CO.jmp", invisible );
+	New Window( "CO - Graph Builder",
+		table2 << Graph Builder(
+			Variables( X( :Ethanol ), Y( :CO ), Overlay( :AirFuel ) ),
+			Elements(
+				Line( X, Y, Legend( 9 ), Error Interval( "Standard Deviation" ) )
+			)
+		)
+	) << Move Window( 170, 148 ) << Minimize Window << Set Window Icon( "Trellis" );
+	New Window( "HW4 - Fit Least Squares 3",
+		table1 << Fit Model(
+			Y( :"Liters/minute"n ),
+			Effects( :Level ),
+			Personality( "Standard Least Squares" ),
+			Emphasis( "Effect Leverage" ),
+			Run(
+				:"Liters/minute"n << {Summary of Fit( 1 ), Analysis of Variance( 1 ),
+				Parameter Estimates( 1 ), Lack of Fit( 0 ), Scaled Estimates( 0 ),
+				Plot Actual by Predicted( 1 ), Plot Regression( 0 ),
+				Plot Residual by Predicted( 1 ), Plot Studentized Residuals( 0 ),
+				Plot Effect Leverage( 1 ), Plot Residual by Normal Quantiles( 0 ),
+				Box Cox Y Transformation( 0 ), {:Level << {LSMeans Tukey HSD( 0.05 ),
+				LSMeans Dunnett(
+					0.05,
+					Control Level( "1" ),
+					Control Differences Chart( 1, Point Options( "Show Needles" ) )
+				), LSMeans Contrast( [-1 1 0 0 0, 0 0 0 -1 1] ),
+				LSMeans Contrast( [-1 0 0 0 1] )}}}
+			),
+			SendToReport(
+				Dispatch(
+					{"Response Liters/minute", "Level", "Contrast"},
+					"Test Detail",
+					OutlineBox,
+					{Close( 0 )}
+				),
+				Dispatch(
+					{"Response Liters/minute", "Level", "Contrast"},
+					"Parameter Function",
+					OutlineBox,
+					{Close( 0 )}
+				),
+				Dispatch(
+					{"Response Liters/minute", "Level", "Contrast"[2]},
+					"Test Detail",
+					OutlineBox,
+					{Close( 0 )}
+				),
+				Dispatch(
+					{"Response Liters/minute", "Level", "Contrast"[2]},
+					"Parameter Function",
+					OutlineBox,
+					{Close( 0 )}
+				)
+			)
+		)
+	) << Move Window( 624, 35 ) << Size Window( 930, 796 ) << Maximize Display <<
+	Set Window Icon( "Model" );
+)

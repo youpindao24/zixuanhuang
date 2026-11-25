@@ -1,0 +1,1 @@
+dt=current data table();/*Requires treatment column to be called Treatment, block column = Block*/T=dt:Treatment<<Get Values;B=dt:Block<<Get Values;/*Creates L and Xd matrices*/L =Design(B);Xd=Design(T);/*Block/treatment incidence matrix*/Nd=L`*Xd;/*Treatment concurrence matrix*/NNt=Nd`*Nd;newtab = As Table(NNt);
